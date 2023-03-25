@@ -14,16 +14,19 @@ DATA_SCHEMA = vol.Schema(
 )
 
 class ZankMediaPlayerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    VERSION = 1
+
     async def async_step_user(self, user_input=None):
         errors = {}
-
+        
         if user_input is not None:
-            host = user_input[CONF_HOST]
-            port = user_input[CONF_PORT]
+            await self.async_set_unique_id(user_input[CONF_HOST])
+            self._abort_if_unique_id_configured()
 
-            # TODO: Validate the connection with the media player before creating the entry
-            return self.async_create_entry(title=host, data=user_input)
+            try:
+                # Validate the input and create the config entry if valid.
+                return self.async_create_entry(title=user_input[CONF_HOST], data=user_input)
+            except Exception:
+                errors["base"] = "unknown_error"
 
-        return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
-        )
+        return self.async_show_form(step_id="user", data_schema=DATA_SCHEMA, errors=errors)
