@@ -10,7 +10,10 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    media_player = ZankMediaPlayer(hass, entry.data)
+    ip_address = entry.data[CONF_HOST]
+    port = entry.data[CONF_PORT]
+
+    media_player = ZankMediaPlayer(hass, ip_address, port)
     await media_player.async_added_to_hass()
     
     hass.data[DOMAIN][entry.entry_id] = media_player
