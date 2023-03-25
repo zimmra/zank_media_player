@@ -1,0 +1,10 @@
+{
+  "domain": "zank_media_player",
+  "name": "Zank Media Player",
+  "config_flow": true,
+  "documentation": "https://github.com/zimmra/zank_media_player",
+  "requirements": ["zankpy"],
+  "dependencies": [],
+  "codeowners": ["@zimmra"],
+  "version": "0.1.0"
+}
