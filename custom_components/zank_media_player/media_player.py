@@ -1,4 +1,6 @@
 import logging
+import string
+import secrets
 from zankpy import ZankControlClient
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import (
@@ -9,11 +11,14 @@ from homeassistant.components.media_player.const import (
     SUPPORT_NEXT_TRACK,
     SUPPORT_VOLUME_STEP,
     SUPPORT_VOLUME_MUTE,
+    SUPPORT_VOLUME_UP,
+    SUPPORT_VOLUME_DOWN,
 )
 from homeassistant.const import (
-    CONF_HOST,
-    CONF_NAME,
-    CONF_PORT,
+    STATE_IDLE,
+    STATE_PLAYING,
+    STATE_PAUSED,
+    STATE_UNKNOWN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,23 +31,34 @@ SUPPORTED_FEATURES = (
     | SUPPORT_NEXT_TRACK
     | SUPPORT_VOLUME_STEP
     | SUPPORT_VOLUME_MUTE
+    | SUPPORT_VOLUME_UP
+    | SUPPORT_VOLUME_DOWN
 )
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
+    ip_address = config_entry.data[CONF_HOST]
+    port = config_entry.data[CONF_PORT]
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    # Use the entry data instead of config
-    entry_data = discovery_info
+    media_player = ZankMediaPlayer(hass, ip_address, port, config_entry)
+    
+    hass.data[DOMAIN][config_entry.entry_id] = media_player
+    hass.helpers.dispatcher.async_dispatcher_send(DOMAIN, config_entry.entry_id)
 
-    name = entry_data.get(CONF_NAME, "Zank Media Player")
-    host = entry_data[CONF_HOST]
-    port = entry_data[CONF_PORT]
-
-    add_entities([ZankMediaPlayer(name, host, port)])
+    async_add_entities([media_player])
+    return True
 
 class ZankMediaPlayer(MediaPlayerEntity):
-    def __init__(self, name, host, port):
-        self._name = name
-        self._client = ZankControlClient(host, port)
-        self._state = None
+    def __init__(self, hass, ip_address, port, config_entry):
+        self.hass = hass
+        self._client = ZankControlClient(ip_address, port)
+        self._config_entry = config_entry
+        self._attr_name = f"Zank Media Player ({ip_address})"
+        random_suffix = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(5))
+        self._attr_unique_id = f"{ip_address}-{random_suffix}"
+
+    async def async_added_to_hass(self):
+        self.hass.async_create_task(
+            self.hass.config_entries.async_forward_entry_setup(self._config_entry, "media_player")
+        )
 
     @property
     def name(self):
@@ -50,7 +66,7 @@ class ZankMediaPlayer(MediaPlayerEntity):
 
     @property
     def state(self):
-        return self._state
+        return STATE_UNKNOWN
 
     @property
     def supported_features(self):
@@ -59,15 +75,12 @@ class ZankMediaPlayer(MediaPlayerEntity):
     # Implement the media player control methods, for example:
     def media_play(self):
         self._client.send_command("mediaPlayPause")
-        self._state = "playing"
 
     def media_pause(self):
         self._client.send_command("mediaPlayPause")
-        self._state = "paused"
 
     def media_stop(self):
         self._client.send_command("mediaPlayPause")
-        self._state = "idle"
 
     def media_previous_track(self):
         self._client.send_command("mediaPrevious")

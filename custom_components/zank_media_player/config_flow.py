@@ -29,4 +29,9 @@ class ZankMediaPlayerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:
                 errors["base"] = "unknown_error"
 
-        return self.async_show_form(step_id="user", data_schema=DATA_SCHEMA, errors=errors)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={"IP Address": "IP Address", "Port": "Port"},
+        )
